@@ -719,17 +719,17 @@ __pack_object(PyObject *msg, PyObject *obj)
 }
 
 
-#define __pack_ipc__(m, s, d, l) __pack_buffers(m, s, &l, s, d, l)
+#define __pack_size__(m, s, d, l) __pack_buffers(m, s, &l, s, d, l)
 
 static inline PyObject *
-__pack_ipc(PyObject *msg)
+__pack_size(PyObject *msg)
 {
     PyObject *result = NULL;
     Py_ssize_t len = PyByteArray_GET_SIZE(msg);
     uint8_t size = __size__(len);
 
     if ((result = __msg_new(1 + size + len)) &&
-        __pack_ipc__(result, size, PyByteArray_AS_STRING(msg), len)) {
+        __pack_size__(result, size, PyByteArray_AS_STRING(msg), len)) {
         Py_CLEAR(result);
     }
     return result;
@@ -737,9 +737,9 @@ __pack_ipc(PyObject *msg)
 
 
 static PyObject *
-__pack(PyObject *msg, PyObject *obj)
+__pack_encode(PyObject *msg, PyObject *obj)
 {
-    return __pack_object(msg, obj) ? NULL : __pack_ipc(msg);
+    return __pack_object(msg, obj) ? NULL : __pack_size(msg);
 }
 
 
@@ -1438,9 +1438,9 @@ pack_register(PyObject *module, PyObject *obj)
 }
 
 
-/* pack._pack() */
+/* pack.pack() */
 static PyObject *
-pack__pack(PyObject *module, PyObject *obj)
+pack_pack(PyObject *module, PyObject *obj)
 {
     PyObject *msg = NULL;
 
@@ -1448,20 +1448,6 @@ pack__pack(PyObject *module, PyObject *obj)
         Py_CLEAR(msg);
     }
     return msg;
-}
-
-
-/* pack.pack() */
-static PyObject *
-pack_pack(PyObject *module, PyObject *obj)
-{
-    PyObject *result = NULL, *msg = NULL;
-
-    if ((msg = __new_msg())) {
-        result = __pack(msg, obj);
-        Py_DECREF(msg);
-    }
-    return result;
 }
 
 
@@ -1476,6 +1462,20 @@ pack_unpack(PyObject *module, PyObject *args)
     if (PyArg_ParseTuple(args, "y*:unpack", &msg)) {
         result = __unpack_msg(&msg, &off);
         PyBuffer_Release(&msg);
+    }
+    return result;
+}
+
+
+/* pack.encode() */
+static PyObject *
+pack_encode(PyObject *module, PyObject *obj)
+{
+    PyObject *result = NULL, *msg = NULL;
+
+    if ((msg = __new_msg())) {
+        result = __pack_encode(msg, obj);
+        Py_DECREF(msg);
     }
     return result;
 }
@@ -1498,11 +1498,11 @@ pack_size(PyObject *module, PyObject *args)
 
 /* pack_def.m_methods */
 static PyMethodDef pack_m_methods[] = {
-    {"register", (PyCFunction)pack_register, METH_O, "register(obj)"},
-    {"_pack", (PyCFunction)pack__pack, METH_O, "_pack(obj) -> msg"},
-    {"pack", (PyCFunction)pack_pack, METH_O, "pack(obj) -> msg"},
-    {"unpack", (PyCFunction)pack_unpack, METH_VARARGS, "unpack(msg) -> obj"},
-    {"size", (PyCFunction)pack_size, METH_VARARGS, "size(msg) -> int"},
+    {"register", (PyCFunction)pack_register, METH_O,       "register(obj)"},
+    {"pack",     (PyCFunction)pack_pack,     METH_O,       "pack(obj) -> msg"},
+    {"unpack",   (PyCFunction)pack_unpack,   METH_VARARGS, "unpack(msg) -> obj"},
+    {"encode",   (PyCFunction)pack_encode,   METH_O,       "encode(obj) -> msg"},
+    {"size",     (PyCFunction)pack_size,     METH_VARARGS, "size(msg) -> int"},
     {NULL} /* Sentinel */
 };
 
