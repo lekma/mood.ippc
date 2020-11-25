@@ -719,17 +719,15 @@ __pack_object(PyObject *msg, PyObject *obj)
 }
 
 
-#define __pack_size__(m, s, d, l) __pack_buffers(m, s, &l, s, d, l)
-
 static inline PyObject *
-__pack_size(PyObject *msg)
+__pack_encode__(PyObject *msg)
 {
     PyObject *result = NULL;
     Py_ssize_t len = PyByteArray_GET_SIZE(msg);
     uint8_t size = __size__(len);
 
-    if ((result = __msg_new(1 + size + len)) &&
-        __pack_size__(result, size, PyByteArray_AS_STRING(msg), len)) {
+    if ((result = __msg_new(2 + size + len)) &&
+        __pack_buffers(result, size, &len, size, PyByteArray_AS_STRING(msg), len)) {
         Py_CLEAR(result);
     }
     return result;
@@ -739,7 +737,7 @@ __pack_size(PyObject *msg)
 static PyObject *
 __pack_encode(PyObject *msg, PyObject *obj)
 {
-    return __pack_object(msg, obj) ? NULL : __pack_size(msg);
+    return __pack_object(msg, obj) ? NULL : __pack_encode__(msg);
 }
 
 
