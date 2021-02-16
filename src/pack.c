@@ -1,6 +1,6 @@
 /*
 #
-# Copyright © 2020 Malek Hadj-Ali
+# Copyright © 2021 Malek Hadj-Ali
 # All rights reserved.
 #
 # This file is part of mood.
@@ -45,8 +45,6 @@ typedef struct {
     PyObject *registry;
 } module_state;
 
-static module_state *_module_get_state(void);
-
 
 /* for use with Py_EnterRecursiveCall */
 #define _While_(a, n) " while " #a " a " n
@@ -58,12 +56,14 @@ static module_state *_module_get_state(void);
     PyBytes_FromStringAndSize(PyByteArray_AS_STRING(o), PyByteArray_GET_SIZE(o))
 
 
+_Py_IDENTIFIER(__reduce__);
+
+
 /* fwd */
 static int __pack_object(PyObject *, PyObject *);
 static PyObject *__unpack_msg(Py_buffer *, Py_ssize_t *);
 
-
-_Py_IDENTIFIER(__reduce__);
+static module_state *_module_get_state(void);
 
 
 /* --------------------------------------------------------------------------
@@ -224,7 +224,7 @@ __pack_buffers__(PyByteArrayObject *self, uint8_t type,
 static PyObject *
 __msg_new(Py_ssize_t alloc)
 {
-    return _PyObject_CAST(__msg_new__(alloc));
+    return _PyObject_CAST(__msg_new__(((alloc + 7) & ~7)));
 }
 
 #define __new_msg() __msg_new(32)
@@ -809,6 +809,7 @@ __unpack_float8__(const char *buffer)
     return value.f;
 }
 
+
 /* -------------------------------------------------------------------------- */
 
 #define __unpack_int__(b, s) \
@@ -1392,7 +1393,7 @@ __unpack_msg(Py_buffer *msg, Py_ssize_t *off)
 
 
 static PyObject *
-__get_size(Py_buffer *msg)
+__size(Py_buffer *msg)
 {
     Py_ssize_t size = -1, len = msg->len;
     const char * buf = msg->buf;
@@ -1449,6 +1450,20 @@ pack_pack(PyObject *module, PyObject *obj)
 }
 
 
+/* pack.encode() */
+static PyObject *
+pack_encode(PyObject *module, PyObject *obj)
+{
+    PyObject *result = NULL, *msg = NULL;
+
+    if ((msg = __new_msg())) {
+        result = __pack_encode(msg, obj);
+        Py_DECREF(msg);
+    }
+    return result;
+}
+
+
 /* pack.unpack() */
 static PyObject *
 pack_unpack(PyObject *module, PyObject *args)
@@ -1465,20 +1480,6 @@ pack_unpack(PyObject *module, PyObject *args)
 }
 
 
-/* pack.encode() */
-static PyObject *
-pack_encode(PyObject *module, PyObject *obj)
-{
-    PyObject *result = NULL, *msg = NULL;
-
-    if ((msg = __new_msg())) {
-        result = __pack_encode(msg, obj);
-        Py_DECREF(msg);
-    }
-    return result;
-}
-
-
 /* pack.size() */
 static PyObject *
 pack_size(PyObject *module, PyObject *args)
@@ -1487,7 +1488,7 @@ pack_size(PyObject *module, PyObject *args)
     Py_buffer msg;
 
     if (PyArg_ParseTuple(args, "y*:size", &msg)) {
-        result = __get_size(&msg);
+        result = __size(&msg);
         PyBuffer_Release(&msg);
     }
     return result;
@@ -1498,8 +1499,8 @@ pack_size(PyObject *module, PyObject *args)
 static PyMethodDef pack_m_methods[] = {
     {"register", (PyCFunction)pack_register, METH_O,       "register(obj)"},
     {"pack",     (PyCFunction)pack_pack,     METH_O,       "pack(obj) -> msg"},
-    {"unpack",   (PyCFunction)pack_unpack,   METH_VARARGS, "unpack(msg) -> obj"},
     {"encode",   (PyCFunction)pack_encode,   METH_O,       "encode(obj) -> msg"},
+    {"unpack",   (PyCFunction)pack_unpack,   METH_VARARGS, "unpack(msg) -> obj"},
     {"size",     (PyCFunction)pack_size,     METH_VARARGS, "size(msg) -> int"},
     {NULL} /* Sentinel */
 };
