@@ -22,9 +22,9 @@
 
 from collections import deque
 
-from mood.event import fatal, Loop, EVFLAG_NOSIGMASK, EV_READ, EVBREAK_ALL
+from mood.event import fatal, EV_READ
 
-from .connections import Connection
+from .connections import Connection, Overwatch
 from .loops import watcher, ServerLoop, ClientLoop
 from .pack import encode, size, unpack
 from .sockets import ServerSocket, ClientSocket
@@ -150,28 +150,10 @@ class IPPCAttribute(object):
         return self._handler(self._name, args, kwargs)
 
 
-class IPPCConnection(Connection):
+class IPPCConnection(Overwatch):
 
-    def __init__(self, name, logger, on_close=None, _loop_=None):
-        self._loop = Loop(flags=EVFLAG_NOSIGMASK)
-        super().__init__(
-            ClientSocket(name),
-            self._loop, logger, on_close=on_close, _loop_=_loop_
-        )
-
-    def __block__(self):
-        super().__block__()
-        self._loop.start()
-
-    def __unblock__(self):
-        self._loop.stop(EVBREAK_ALL)
-        super().__unblock__()
-
-    def close(self):
-        try:
-            self._loop.stop(EVBREAK_ALL)
-        finally:
-            super().close()
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(ClientSocket(name), *args, **kwargs)
 
     def __on_result__(self, buf):
         try:
@@ -210,7 +192,7 @@ class Client(ClientLoop):
 
     def setup(self, name):
         self.ippc = IPPCConnection(
-            name, self._logger, on_close=self.stop, _loop_=self._loop
+            name, self._loop, self._logger, on_close=self.stop
         )
         return ()
 

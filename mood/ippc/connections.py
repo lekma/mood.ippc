@@ -23,7 +23,7 @@
 from logging import ERROR, DEBUG
 from collections import deque
 
-from mood.event import EV_READ, EV_WRITE
+from mood.event import Loop, EVFLAG_NOSIGMASK, EV_READ, EV_WRITE, EVBREAK_ALL
 
 
 # ------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ from mood.event import EV_READ, EV_WRITE
 
 class Connection(object):
 
-    def __init__(self, socket, loop, logger, on_close=None, _loop_=None):
+    def __setup__(self, socket, loop, logger, on_close=None):
         self._socket = socket
         self._logger = logger
         self._on_close = on_close
@@ -44,23 +44,10 @@ class Connection(object):
         self._rtasks = deque()
         self._reader = loop.io(socket, EV_READ, self.__on_read__)
         self._reader.start()
-        # overwatch
-        if _loop_ and (_loop_ is not loop):
-            self._overwatch = _loop_.io(socket, EV_READ, self.__on_read__)
-        else:
-            self._overwatch = None
-        if self._overwatch:
-            self._overwatch.start()
-        # ready
+
+    def __init__(self, *args, **kwargs):
+        self.__setup__(*args, **kwargs)
         self._logger.debug(f"{self}: ready")
-
-    def __block__(self):
-        if self._overwatch:
-            self._overwatch.stop()
-
-    def __unblock__(self):
-        if self._overwatch:
-            self._overwatch.start()
 
     def __del__(self):
         self.close()
@@ -85,21 +72,25 @@ class Connection(object):
     def closed(self):
         return self._socket.closed
 
+    def __stop__(self):
+        self._reader.stop()
+        self._rtasks.clear()
+        self._rbuf.clear()
+        self._writer.stop()
+        self._wtasks.clear()
+        self._socket.close()
+
+    def __cleanup__(self):
+        self._reader = self._writer = None # break cycles
+
     def close(self, notify=True):
         if not self.closed and not self._closing:
             self._closing = True
             self._logger.debug(f"{self}: closing...")
             try:
-                if self._overwatch:
-                    self._overwatch.stop()
-                self._reader.stop()
-                self._rtasks.clear()
-                self._rbuf.clear()
-                self._writer.stop()
-                self._wtasks.clear()
-                self._socket.close()
+                self.__stop__()
             finally:
-                self._overwatch = self._reader = self._writer = None # break cycles
+                self.__cleanup__()
                 if self._on_close:
                     cb, self._on_close = self._on_close, None
                     if notify:
@@ -167,4 +158,34 @@ class Connection(object):
             self._wtasks.append((buf, cb, args))
             if not self._writer.active:
                 self._writer.start()
+
+
+# ------------------------------------------------------------------------------
+# Overwatch
+
+class Overwatch(Connection):
+
+    def __setup__(self, socket, loop, logger, on_close=None):
+        self._loop = Loop(flags=EVFLAG_NOSIGMASK)
+        super().__setup__(socket, self._loop, logger, on_close=on_close)
+        # overwatch
+        self._overwatch = loop.io(socket, EV_READ, self.__on_read__)
+        self._overwatch.start()
+
+    def __stop__(self):
+        self._loop.stop(EVBREAK_ALL)
+        self._overwatch.stop()
+        super().__stop__()
+
+    def __cleanup__(self):
+        self._overwatch = None # break cycles
+        super().__cleanup__()
+
+    def __block__(self):
+        self._overwatch.stop()
+        self._loop.start()
+
+    def __unblock__(self):
+        self._loop.stop(EVBREAK_ALL)
+        self._overwatch.start()
 
