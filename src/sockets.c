@@ -91,8 +91,10 @@ __socket_init(Abstract *self, PyObject *args, PyObject *kwargs)
     socklen_t addrlen = offsetof(struct sockaddr_un, sun_path) + 1;
     int nbio = 1;
 
-    if (!PyArg_ParseTuple(args, "U:__new__", &name) ||
-        !(_name_ = PyUnicode_AsUTF8AndSize(name, &namelen))) {
+    if (
+        !PyArg_ParseTuple(args, "U:__new__", &name) ||
+        !(_name_ = PyUnicode_AsUTF8AndSize(name, &namelen))
+    ) {
         return -1;
     }
     if (!namelen) {
@@ -112,11 +114,13 @@ __socket_init(Abstract *self, PyObject *args, PyObject *kwargs)
     if (
         ((self->fd = socket(AF_UNIX, SOCK_TYPE, 0)) == -1) ||
         ((self->size = getsocksize(self->fd)) == -1) ||
-        ((self->server) ?
-         (bind(self->fd, &addr, addrlen) || listen(self->fd, SOMAXCONN)) :
-         connect(self->fd, &addr, addrlen)) ||
+        (
+            (self->server) ?
+            (bind(self->fd, &addr, addrlen) || listen(self->fd, SOMAXCONN)) :
+            connect(self->fd, &addr, addrlen)
+        ) ||
         ioctl(self->fd, FIONBIO, &nbio)
-       ) {
+    ) {
         _PyErr_SetFromErrno();
         return -1;
     }
@@ -130,8 +134,10 @@ __socket_new(PyTypeObject *type, PyObject *args, PyObject *kwargs, int server)
 {
     Abstract *self = NULL;
 
-    if ((self = __socket_alloc(type, server)) &&
-        __socket_init(self, args, kwargs)) {
+    if (
+        (self = __socket_alloc(type, server)) &&
+        __socket_init(self, args, kwargs)
+    ) {
         Py_CLEAR(self);
     }
     return (PyObject *)self;
@@ -191,7 +197,8 @@ static PyObject *
 Abstract_tp_repr(Abstract *self)
 {
     return PyUnicode_FromFormat(
-        "<%s(name='%U', fd=%d)>", Py_TYPE(self)->tp_name, self->name, self->fd);
+        "<%s(name='%U', fd=%d)>", Py_TYPE(self)->tp_name, self->name, self->fd
+    );
 }
 
 
@@ -219,8 +226,14 @@ Abstract_fileno(Abstract *self)
 
 /* Abstract_Type.tp_methods */
 static PyMethodDef Abstract_tp_methods[] = {
-    {"close", (PyCFunction)Abstract_close, METH_NOARGS, Abstract_close_doc},
-    {"fileno", (PyCFunction)Abstract_fileno, METH_NOARGS, Abstract_fileno_doc},
+    {
+        "close", (PyCFunction)Abstract_close,
+        METH_NOARGS, Abstract_close_doc
+    },
+    {
+        "fileno", (PyCFunction)Abstract_fileno,
+        METH_NOARGS, Abstract_fileno_doc
+    },
     {NULL}  /* Sentinel */
 };
 
@@ -235,7 +248,10 @@ Abstract_closed_get(Abstract *self, void *closure)
 
 /* Abstract_Type.tp_getset */
 static PyGetSetDef Abstract_tp_getset[] = {
-    {"closed", (getter)Abstract_closed_get, _Py_READONLY_ATTRIBUTE, NULL, NULL},
+    {
+        "closed", (getter)Abstract_closed_get,
+        _Py_READONLY_ATTRIBUTE, NULL, NULL
+    },
     {NULL}  /* Sentinel */
 };
 
@@ -377,8 +393,14 @@ Socket_read(Abstract *self, PyObject *args)
 
 /* Socket_Type.tp_methods */
 static PyMethodDef Socket_tp_methods[] = {
-    {"write", (PyCFunction)Socket_write, METH_VARARGS, Socket_write_doc},
-    {"read", (PyCFunction)Socket_read, METH_VARARGS, Socket_read_doc},
+    {
+        "write", (PyCFunction)Socket_write,
+        METH_VARARGS, Socket_write_doc
+    },
+    {
+        "read", (PyCFunction)Socket_read,
+        METH_VARARGS, Socket_read_doc
+    },
     {NULL}  /* Sentinel */
 };
 
@@ -409,7 +431,7 @@ Server_accept(Abstract *self)
         if (
             ((result->fd = accept4(self->fd, NULL, NULL, SOCK_FLAGS)) == -1) ||
             ((result->size = getsocksize(result->fd)) == -1)
-           ) {
+        ) {
             Py_CLEAR(result);
             return _PyErr_SetFromErrno();
         }
@@ -421,7 +443,10 @@ Server_accept(Abstract *self)
 
 /* Server_Type.tp_methods */
 static PyMethodDef Server_tp_methods[] = {
-    {"accept", (PyCFunction)Server_accept, METH_NOARGS, Server_accept_doc},
+    {
+        "accept", (PyCFunction)Server_accept,
+        METH_NOARGS, Server_accept_doc
+    },
     {NULL}  /* Sentinel */
 };
 
@@ -485,9 +510,13 @@ _module_init(PyObject *module)
         PyModule_AddStringConstant(module, "__version__", PKG_VERSION) ||
         PyType_Ready(&Abstract_Type) ||
         _PyType_ReadyWithBase(&Socket_Type, &Abstract_Type) ||
-        _PyModule_AddTypeWithBase(module, "ServerSocket", &Server_Type, &Abstract_Type) ||
-        _PyModule_AddTypeWithBase(module, "ClientSocket", &Client_Type, &Socket_Type)
-       ) {
+        _PyModule_AddTypeWithBase(
+            module, "ServerSocket", &Server_Type, &Abstract_Type
+        ) ||
+        _PyModule_AddTypeWithBase(
+            module, "ClientSocket", &Client_Type, &Socket_Type
+        )
+    ) {
         return -1;
     }
     return 0;

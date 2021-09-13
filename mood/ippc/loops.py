@@ -24,7 +24,9 @@ import builtins
 from logging import getLogger
 from collections import deque
 from os import getpid
-from signal import pthread_sigmask, SIG_UNBLOCK, SIGINT, SIGTERM
+from signal import (
+    pthread_sigmask, valid_signals, SIG_BLOCK, SIG_UNBLOCK, SIGINT, SIGTERM
+)
 
 from mood.event import (
     loop, Loop, EVFLAG_AUTO, EVFLAG_NOSIGMASK, EVBREAK_ALL, EV_MAXPRI
@@ -139,12 +141,14 @@ class __SignalLoop__(object):
                 self.__on_error__("error while stopping")
             finally:
                 self._loop.stop(EVBREAK_ALL)
+                pthread_sigmask(SIG_UNBLOCK, valid_signals())
                 self._logger.info(f"{self}: stopped")
                 self._stopping = False
 
     def start(self, *args, **kwargs):
         if self.stopped:
             self._logger.info(f"{self}: starting...")
+            pthread_sigmask(SIG_BLOCK, valid_signals())
             self.__setup__(*self.setup(*args, **kwargs))
             for watcher in self._watchers:
                 watcher.start()

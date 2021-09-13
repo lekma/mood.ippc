@@ -27,7 +27,7 @@ from os.path import abspath
 
 
 pkg_name = "mood.ippc"
-pkg_version = "0.5.0"
+pkg_version = "0.5.1"
 pkg_desc = "Python inter process procedure call"
 
 PKG_VERSION = ("PKG_VERSION", "\"{0}\"".format(pkg_version))

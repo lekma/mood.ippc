@@ -187,8 +187,10 @@ __pack_type__(PyByteArrayObject *self, uint8_t type)
 
 
 static inline int
-__pack_buffer__(PyByteArrayObject *self, uint8_t type,
-                const void *_buffer, size_t _size)
+__pack_buffer__(
+    PyByteArrayObject *self, uint8_t type,
+    const void *_buffer, size_t _size
+)
 {
     size_t size = 1 + _size;
 
@@ -202,9 +204,11 @@ __pack_buffer__(PyByteArrayObject *self, uint8_t type,
 
 
 static inline int
-__pack_buffers__(PyByteArrayObject *self, uint8_t type,
-                 const void *_buffer1, size_t _size1,
-                 const void *_buffer2, size_t _size2)
+__pack_buffers__(
+    PyByteArrayObject *self, uint8_t type,
+    const void *_buffer1, size_t _size1,
+    const void *_buffer2, size_t _size2
+)
 {
     size_t size = 1 + _size1 + _size2;
 
@@ -238,22 +242,30 @@ __pack_type(PyObject *msg, uint8_t type)
 
 
 static int
-__pack_buffer(PyObject *msg, uint8_t type,
-              const void *_buffer, size_t _size)
+__pack_buffer(
+    PyObject *msg, uint8_t type,
+    const void *_buffer, size_t _size
+)
 {
-    return __pack_buffer__((PyByteArrayObject *)msg, type,
-                           _buffer, _size);
+    return __pack_buffer__(
+        (PyByteArrayObject *)msg, type,
+        _buffer, _size
+    );
 }
 
 
 static int
-__pack_buffers(PyObject *msg, uint8_t type,
-               const void *_buffer1, size_t _size1,
-               const void *_buffer2, size_t _size2)
+__pack_buffers(
+    PyObject *msg, uint8_t type,
+    const void *_buffer1, size_t _size1,
+    const void *_buffer2, size_t _size2
+)
 {
-    return __pack_buffers__((PyByteArrayObject *)msg, type,
-                            _buffer1, _size1,
-                            _buffer2, _size2);
+    return __pack_buffers__(
+        (PyByteArrayObject *)msg, type,
+        _buffer1, _size1,
+        _buffer2, _size2
+    );
 }
 
 
@@ -436,8 +448,10 @@ __pack_unicode(PyObject *msg, uint8_t type, PyObject *obj)
 /* TYPE_TUPLE / TYPE_LIST --------------------------------------------------- */
 
 static inline int
-__pack_sequence__(PyObject *msg, uint8_t type, PyObject **items, Py_ssize_t len,
-                  const char *where)
+__pack_sequence__(
+    PyObject *msg, uint8_t type, PyObject **items, Py_ssize_t len,
+    const char *where
+)
 {
     Py_ssize_t i;
     int res = -1;
@@ -530,15 +544,19 @@ __pack_class_id(PyObject *msg, PyObject *obj)
     PyObject *module = NULL, *qualname = NULL;
     int res = -1;
 
-    if ((module = _PyObject_GetAttrId(obj, &PyId___module__)) &&
-        (qualname = _PyObject_GetAttrId(obj, &PyId___qualname__))) {
+    if (
+        (module = _PyObject_GetAttrId(obj, &PyId___module__)) &&
+        (qualname = _PyObject_GetAttrId(obj, &PyId___qualname__))
+    ) {
         if (PyUnicode_CheckExact(module) && PyUnicode_CheckExact(qualname)) {
             res = __pack_str(msg, module) ? -1 : __pack_str(msg, qualname);
         }
         else {
-            PyErr_Format(PyExc_TypeError,
-                         "expected strings, got: __module__: %.200s, __qualname__: %.200s",
-                         Py_TYPE(module)->tp_name, Py_TYPE(qualname)->tp_name);
+            PyErr_Format(
+                PyExc_TypeError,
+                "expected strings, got: __module__: %.200s, __qualname__: %.200s",
+                Py_TYPE(module)->tp_name, Py_TYPE(qualname)->tp_name
+            );
         }
     }
     Py_XDECREF(qualname);
@@ -610,8 +628,9 @@ __pack_instance(PyObject *msg, PyObject *obj, const char *name)
                 type = __pack_reduce_instance__(data, reduce);
             }
             else {
-                PyErr_SetString(PyExc_TypeError,
-                                "__reduce__() must return a str or a tuple");
+                PyErr_SetString(
+                    PyExc_TypeError, "__reduce__() must return a str or a tuple"
+                );
             }
             if (type) {
                 res = __pack_instance__(msg, type, data);
@@ -640,7 +659,9 @@ __register_object(PyObject *registry, PyObject *obj)
     int res = -1;
 
     if ((msg = __new_msg())) {
-        if (!__pack_register(msg, obj) && (key = _PyBytes_FromPyByteArray(msg))) {
+        if (
+            !__pack_register(msg, obj) && (key = _PyBytes_FromPyByteArray(msg))
+        ) {
             res = PyDict_SetItem(registry, key, obj);
             Py_DECREF(key);
         }
@@ -726,8 +747,12 @@ __pack_encode__(PyObject *msg)
     Py_ssize_t len = PyByteArray_GET_SIZE(msg);
     uint8_t size = __size__(len);
 
-    if ((result = __msg_new(2 + size + len)) &&
-        __pack_buffers(result, size, &len, size, PyByteArray_AS_STRING(msg), len)) {
+    if (
+        (result = __msg_new(2 + size + len)) &&
+        __pack_buffers(
+            result, size, &len, size, PyByteArray_AS_STRING(msg), len
+        )
+    ) {
         Py_CLEAR(result);
     }
     return result;
@@ -778,9 +803,11 @@ __unpack_registered(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size)
     module_state *state = NULL;
     PyObject *result = NULL, *key = NULL;
 
-    if ((buffer = __unpack_buffer(msg, off, size)) &&
+    if (
+        (buffer = __unpack_buffer(msg, off, size)) &&
         (state = _module_get_state()) &&
-        (key = PyBytes_FromStringAndSize(buffer, size))) {
+        (key = PyBytes_FromStringAndSize(buffer, size))
+    ) {
         if ((result = PyDict_GetItem(state->registry, key))) { // borrowed
             Py_INCREF(result);
         }
@@ -841,14 +868,24 @@ __unpack_float8__(const char *buffer)
 
 
 static inline int
-__unpack_sequence__(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size, PyObject **items)
+__unpack_sequence__(
+    Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size, PyObject **items
+)
 {
     PyObject *item = NULL;
     Py_ssize_t i;
     int res = 0;
 
     for (i = 0; i < size; ++i) {
-        if ((res = ((item = __unpack_msg(msg, off)) ? 0 : -1))) {
+        if (
+            (
+                res = (
+                    (
+                        item = __unpack_msg(msg, off)
+                    ) ? 0 : -1
+                )
+            )
+        ) {
             break;
         }
         items[i] = item; // steals ref
@@ -858,16 +895,25 @@ __unpack_sequence__(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size, PyObject *
 
 
 static inline int
-__unpack_dict__(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size, PyObject *items)
+__unpack_dict__(
+    Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size, PyObject *items
+)
 {
     PyObject *key = NULL, *val = NULL;
     Py_ssize_t i;
     int res = 0;
 
     for (i = 0; i < size; ++i) {
-        if ((res = (((key = __unpack_msg(msg, off)) &&
-                     (val = __unpack_msg(msg, off))) ?
-                    PyDict_SetItem(items, key, val) : -1))) {
+        if (
+            (
+                res = (
+                    (
+                        (key = __unpack_msg(msg, off)) &&
+                        (val = __unpack_msg(msg, off))
+                    ) ? PyDict_SetItem(items, key, val) : -1
+                )
+            )
+        ) {
             Py_XDECREF(key);
             Py_XDECREF(val);
             break;
@@ -887,7 +933,15 @@ __unpack_anyset__(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size, PyObject *it
     int res = 0;
 
     for (i = 0; i < size; ++i) {
-        if ((res = ((item = __unpack_msg(msg, off)) ? PySet_Add(items, item) : -1))) {
+        if (
+            (
+                res = (
+                    (
+                        item = __unpack_msg(msg, off)
+                    ) ? PySet_Add(items, item) : -1
+                )
+            )
+        ) {
             Py_XDECREF(item);
             break;
         }
@@ -930,8 +984,10 @@ __unpack_tuple(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size)
     PyObject *result = NULL;
 
     if (!Py_EnterRecursiveCall(_Unpacking_("tuple"))) {
-        if ((result = PyTuple_New(size)) &&
-            __unpack_sequence__(msg, off, size, _PyTuple_ITEMS(result))) {
+        if (
+            (result = PyTuple_New(size)) &&
+            __unpack_sequence__(msg, off, size, _PyTuple_ITEMS(result))
+        ) {
             Py_CLEAR(result);
         }
         Py_LeaveRecursiveCall();
@@ -946,8 +1002,10 @@ __unpack_list(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size)
     PyObject *result = NULL;
 
     if (!Py_EnterRecursiveCall(_Unpacking_("list"))) {
-        if ((result = PyList_New(size)) &&
-            __unpack_sequence__(msg, off, size, _PyList_ITEMS(result))) {
+        if (
+            (result = PyList_New(size)) &&
+            __unpack_sequence__(msg, off, size, _PyList_ITEMS(result))
+        ) {
             Py_CLEAR(result);
         }
         Py_LeaveRecursiveCall();
@@ -962,8 +1020,10 @@ __unpack_dict(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size)
     PyObject *result = NULL;
 
     if (!Py_EnterRecursiveCall(_Unpacking_("dict"))) {
-        if ((result = PyDict_New()) &&
-            __unpack_dict__(msg, off, size, result)) {
+        if (
+            (result = PyDict_New()) &&
+            __unpack_dict__(msg, off, size, result)
+        ) {
             Py_CLEAR(result);
         }
         Py_LeaveRecursiveCall();
@@ -978,8 +1038,10 @@ __unpack_set(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size)
     PyObject *result = NULL;
 
     if (!Py_EnterRecursiveCall(_Unpacking_("set"))) {
-        if ((result = PySet_New(NULL)) &&
-            __unpack_anyset__(msg, off, size, result)) {
+        if (
+            (result = PySet_New(NULL)) &&
+            __unpack_anyset__(msg, off, size, result)
+        ) {
             Py_CLEAR(result);
         }
         Py_LeaveRecursiveCall();
@@ -994,8 +1056,10 @@ __unpack_frozenset(Py_buffer *msg, Py_ssize_t *off, Py_ssize_t size)
     PyObject *result = NULL;
 
     if (!Py_EnterRecursiveCall(_Unpacking_("frozenset"))) {
-        if ((result = PyFrozenSet_New(NULL)) &&
-            __unpack_anyset__(msg, off, size, result)) {
+        if (
+            (result = PyFrozenSet_New(NULL)) &&
+            __unpack_anyset__(msg, off, size, result)
+        ) {
             Py_CLEAR(result);
         }
         Py_LeaveRecursiveCall();
@@ -1012,15 +1076,20 @@ __unpack_class_error(Py_buffer *msg, Py_ssize_t *off)
     _Py_IDENTIFIER(builtins);
     PyObject *module = NULL, *qualname = NULL;
 
-    if ((module = __unpack_msg(msg, off)) &&
-        (qualname = __unpack_msg(msg, off))) {
+    if (
+        (module = __unpack_msg(msg, off)) &&
+        (qualname = __unpack_msg(msg, off))
+    ) {
         if (!_PyUnicode_EqualToASCIIId(module, &PyId_builtins)) {
-            PyErr_Format(PyExc_TypeError,
-                         "cannot unpack <class '%U.%U'>", module, qualname);
+            PyErr_Format(
+                PyExc_TypeError, "cannot unpack <class '%U.%U'>",
+                module, qualname
+            );
         }
         else {
-            PyErr_Format(PyExc_TypeError,
-                         "cannot unpack <class '%U'>", qualname);
+            PyErr_Format(
+                PyExc_TypeError, "cannot unpack <class '%U'>", qualname
+            );
         }
     }
     Py_XDECREF(qualname);
@@ -1048,8 +1117,7 @@ __unpack_singleton_error(Py_buffer *msg, Py_ssize_t *off)
     PyObject *name = NULL;
 
     if ((name = __unpack_msg(msg, off))) {
-        PyErr_Format(PyExc_TypeError,
-                     "cannot unpack '%U'", name);
+        PyErr_Format(PyExc_TypeError, "cannot unpack '%U'", name);
         Py_DECREF(name);
     }
 }
@@ -1084,9 +1152,11 @@ __PyObject_UpdateDict(PyObject *self, PyObject *arg)
                we should do that here. */
             Py_INCREF(key);
             if (!PyUnicode_Check(key)) {
-                PyErr_Format(PyExc_TypeError,
-                             "expected state key to be unicode, not '%.200s'",
-                             Py_TYPE(key)->tp_name);
+                PyErr_Format(
+                    PyExc_TypeError,
+                    "expected state key to be unicode, not '%.200s'",
+                    Py_TYPE(key)->tp_name
+                );
                 Py_DECREF(key);
                 break;
             }
@@ -1110,10 +1180,14 @@ __PyObject_SetState(PyObject *self, PyObject *arg)
     _Py_IDENTIFIER(__setstate__);
     PyObject *result = NULL;
 
-    if (!(result = _PyObject_CallMethodIdObjArgs(self, &PyId___setstate__,
-                                                 arg, NULL))) {
-        if (PyErr_ExceptionMatches(PyExc_AttributeError) &&
-            PyDict_Check(arg)) {
+    if (
+        !(
+            result = _PyObject_CallMethodIdObjArgs(
+                self, &PyId___setstate__, arg, NULL
+            )
+        )
+    ) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError) && PyDict_Check(arg)) {
             PyErr_Clear();
             return __PyObject_UpdateDict(self, arg);
         }
@@ -1134,15 +1208,17 @@ __PyObject_InPlaceConcatOrAdd(PyObject *self, PyObject *arg)
     PyObject *result = NULL;
     int res = -1;
 
-    if ((seq_methods = type->tp_as_sequence) &&
-        seq_methods->sq_inplace_concat) {
+    if (
+        (seq_methods = type->tp_as_sequence) && seq_methods->sq_inplace_concat
+    ) {
         if ((result = seq_methods->sq_inplace_concat(self, arg))) {
             res = 0;
             Py_DECREF(result);
         }
     }
-    else if ((num_methods = type->tp_as_number) &&
-             num_methods->nb_inplace_add) {
+    else if (
+        (num_methods = type->tp_as_number) && num_methods->nb_inplace_add
+    ) {
         if ((result = num_methods->nb_inplace_add(self, arg))) {
             if (result != Py_NotImplemented) {
                 res = 0;
@@ -1151,8 +1227,9 @@ __PyObject_InPlaceConcatOrAdd(PyObject *self, PyObject *arg)
         }
     }
     if (res && !PyErr_Occurred()) {
-        PyErr_Format(PyExc_TypeError,
-                     "cannot extend '%.200s' objects", type->tp_name);
+        PyErr_Format(
+            PyExc_TypeError, "cannot extend '%.200s' objects", type->tp_name
+        );
     }
     return res;
 }
@@ -1163,8 +1240,13 @@ __PyObject_Extend(PyObject *self, PyObject *arg)
     _Py_IDENTIFIER(extend);
     PyObject *result = NULL;
 
-    if (!(result = _PyObject_CallMethodIdObjArgs(self, &PyId_extend,
-                                                 arg, NULL))) {
+    if (
+        !(
+            result = _PyObject_CallMethodIdObjArgs(
+                self, &PyId_extend, arg, NULL
+            )
+        )
+    ) {
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
             PyErr_Clear();
             return __PyObject_InPlaceConcatOrAdd(self, arg);
@@ -1182,10 +1264,11 @@ __PySequence_Fast(PyObject *obj, Py_ssize_t len, const char *message)
 {
     PyObject *result = NULL;
 
-    if ((result = PySequence_Fast(obj, message)) &&
-        (PySequence_Fast_GET_SIZE(result) != len)) {
-        PyErr_Format(PyExc_ValueError,
-                     "expected a sequence of len %zd", len);
+    if (
+        (result = PySequence_Fast(obj, message)) &&
+        (PySequence_Fast_GET_SIZE(result) != len)
+    ) {
+        PyErr_Format(PyExc_ValueError, "expected a sequence of len %zd", len);
         Py_CLEAR(result);
     }
     return result;
@@ -1197,10 +1280,14 @@ __PyObject_MergeFromIter(PyObject *self, PyObject *iter)
     PyObject *item = NULL, *fast = NULL;
 
     while ((item = PyIter_Next(iter))) {
-        if (!(fast = __PySequence_Fast(item, 2, "not a sequence")) ||
-            PyObject_SetItem(self,
-                             PySequence_Fast_GET_ITEM(fast, 0),
-                             PySequence_Fast_GET_ITEM(fast, 1))) {
+        if (
+            !(fast = __PySequence_Fast(item, 2, "not a sequence")) ||
+            PyObject_SetItem(
+                self,
+                PySequence_Fast_GET_ITEM(fast, 0),
+                PySequence_Fast_GET_ITEM(fast, 1)
+            )
+        ) {
             Py_XDECREF(fast);
             Py_DECREF(item);
             break;
@@ -1242,8 +1329,13 @@ __PyObject_Update(PyObject *self, PyObject *arg)
     _Py_IDENTIFIER(update);
     PyObject *result = NULL;
 
-    if (!(result = _PyObject_CallMethodIdObjArgs(self, &PyId_update,
-                                                 arg, NULL))) {
+    if (
+        !(
+            result = _PyObject_CallMethodIdObjArgs(
+                self, &PyId_update, arg, NULL
+            )
+        )
+    ) {
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
             PyErr_Clear();
             return __PyObject_Merge(self, arg);
@@ -1263,9 +1355,10 @@ __PyCallable_Check(PyObject *arg, void *addr)
         *(PyObject **)addr = arg;
         return 1;
     }
-    PyErr_Format(PyExc_TypeError,
-                 "argument 1 must be a callable, not %.200s",
-                 Py_TYPE(arg)->tp_name);
+    PyErr_Format(
+        PyExc_TypeError, "argument 1 must be a callable, not %.200s",
+        Py_TYPE(arg)->tp_name
+    );
     return 0;
 }
 
@@ -1277,16 +1370,19 @@ __PyObject_New(PyObject *reduce)
     PyObject *self = NULL;
 
     if (
-        PyArg_ParseTuple(reduce, "O&O!|OOO",
-                         __PyCallable_Check, &callable, &PyTuple_Type, &args,
-                         &setstatearg, &extendarg, &updatearg) &&
+        PyArg_ParseTuple(
+            reduce, "O&O!|OOO",
+            __PyCallable_Check, &callable,
+            &PyTuple_Type, &args,
+            &setstatearg, &extendarg, &updatearg
+        ) &&
         (self = PyObject_CallObject(callable, args)) &&
         (
-         (setstatearg != Py_None && __PyObject_SetState(self, setstatearg)) ||
-         (extendarg != Py_None && __PyObject_Extend(self, extendarg)) ||
-         (updatearg != Py_None && __PyObject_Update(self, updatearg))
+            (setstatearg != Py_None && __PyObject_SetState(self, setstatearg)) ||
+            (extendarg != Py_None && __PyObject_Extend(self, extendarg)) ||
+            (updatearg != Py_None && __PyObject_Update(self, updatearg))
         )
-       ) {
+    ) {
         Py_CLEAR(self);
     }
     return self;
@@ -1338,8 +1434,7 @@ __unpack_msg(Py_buffer *msg, Py_ssize_t *off)
     switch ((type = __unpack_type(msg, off))) {
         case TYPE_INVALID:
             if (!PyErr_Occurred()) {
-                PyErr_Format(PyExc_TypeError,
-                             "invalid type: '0x%02x'", type);
+                PyErr_Format(PyExc_TypeError, "invalid type: '0x%02x'", type);
             }
             break;
         case TYPE_INT1:
@@ -1384,8 +1479,7 @@ __unpack_msg(Py_buffer *msg, Py_ssize_t *off)
         SIZE_CASE(TYPE_SINGLETON, singleton)
         SIZE_CASE(TYPE_INSTANCE, instance)
         default:
-            PyErr_Format(PyExc_TypeError,
-                         "unknown type: '0x%02x'", type);
+            PyErr_Format(PyExc_TypeError, "unknown type: '0x%02x'", type);
             break;
     }
     return result;
@@ -1412,8 +1506,9 @@ __size(Py_buffer *msg)
             size = __unpack_int8__(buf);
             break;
         default:
-            return PyErr_Format(PyExc_ValueError,
-                                "invalid buffer len: %zd", len);
+            return PyErr_Format(
+                PyExc_ValueError, "invalid buffer len: %zd", len
+            );
     }
     return PyLong_FromSsize_t(size);
 }
@@ -1429,8 +1524,10 @@ pack_register(PyObject *module, PyObject *obj)
 {
     module_state *state = NULL;
 
-    if (!(state = _PyModule_GetState(module)) ||
-        __register_object(state->registry, obj)) {
+    if (
+        !(state = _PyModule_GetState(module)) ||
+        __register_object(state->registry, obj)
+    ) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -1497,11 +1594,26 @@ pack_size(PyObject *module, PyObject *args)
 
 /* pack_def.m_methods */
 static PyMethodDef pack_m_methods[] = {
-    {"register", (PyCFunction)pack_register, METH_O,       "register(obj)"},
-    {"pack",     (PyCFunction)pack_pack,     METH_O,       "pack(obj) -> msg"},
-    {"encode",   (PyCFunction)pack_encode,   METH_O,       "encode(obj) -> msg"},
-    {"unpack",   (PyCFunction)pack_unpack,   METH_VARARGS, "unpack(msg) -> obj"},
-    {"size",     (PyCFunction)pack_size,     METH_VARARGS, "size(msg) -> int"},
+    {
+        "register", (PyCFunction)pack_register,
+        METH_O, "register(obj)"
+    },
+    {
+        "pack", (PyCFunction)pack_pack,
+        METH_O, "pack(obj) -> msg"
+    },
+    {
+        "encode", (PyCFunction)pack_encode,
+        METH_O, "encode(obj) -> msg"
+    },
+    {
+        "unpack", (PyCFunction)pack_unpack,
+        METH_VARARGS, "unpack(msg) -> obj"
+    },
+    {
+        "size", (PyCFunction)pack_size,
+        METH_VARARGS, "size(msg) -> int"
+    },
     {NULL} /* Sentinel */
 };
 
@@ -1573,7 +1685,7 @@ _module_state_init(PyObject *module)
         !(state->registry = PyDict_New()) ||
         __register_object(state->registry, Py_NotImplemented) ||
         __register_object(state->registry, Py_Ellipsis)
-       ) {
+    ) {
         return -1;
     }
     return 0;
@@ -1586,7 +1698,7 @@ _module_init(PyObject *module)
     if (
         _module_state_init(module) ||
         PyModule_AddStringConstant(module, "__version__", PKG_VERSION)
-       ) {
+    ) {
         return -1;
     }
     return 0;

@@ -55,7 +55,9 @@ class Connection(object):
     def __on_error__(self, message, level=ERROR, exc_info=True):
         try:
             suffix = " -> closing" if not self._closing else ""
-            self._logger.log(level, f"{self}: {message}{suffix}", exc_info=exc_info)
+            self._logger.log(
+                level, f"{self}: {message}{suffix}", exc_info=exc_info
+            )
         finally:
             self.close() # close on error
 
