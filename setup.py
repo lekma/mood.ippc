@@ -27,7 +27,7 @@ from os.path import abspath
 
 
 pkg_name = "mood.ippc"
-pkg_version = "0.5.1"
+pkg_version = "0.6.0"
 pkg_desc = "Python inter process procedure call"
 
 PKG_VERSION = ("PKG_VERSION", "\"{0}\"".format(pkg_version))
@@ -51,8 +51,8 @@ setup(
     keywords="ippc",
 
     setup_requires = ["setuptools>=24.2.0"],
-    python_requires="~=3.8",
-    install_requires=["mood.event>=1.5.0"],
+    python_requires="~=3.10",
+    install_requires=["mood.event>=1.6.0"],
     packages=find_packages(),
     namespace_packages=["mood"],
     zip_safe=False,
@@ -81,7 +81,7 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Programming Language :: Python :: 3.8"
+        "Programming Language :: Python :: 3.10"
     ]
 )
 
