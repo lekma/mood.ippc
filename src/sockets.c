@@ -1,6 +1,6 @@
 /*
 #
-# Copyright © 2021 Malek Hadj-Ali
+# Copyright © 2022 Malek Hadj-Ali
 # All rights reserved.
 #
 # This file is part of mood.
@@ -52,25 +52,25 @@ getsocksize(int fd)
 
 
 /* --------------------------------------------------------------------------
-   Abstract
+   AbstractSocket
    -------------------------------------------------------------------------- */
 
-/* Abstract */
+/* AbstractSocket */
 typedef struct {
     PyObject_HEAD
     PyObject *name;
     int fd;
     int size;
     int server;
-} Abstract;
+} AbstractSocket;
 
 
-static inline Abstract *
+static inline AbstractSocket *
 __socket_alloc(PyTypeObject *type, int server)
 {
-    Abstract *self = NULL;
+    AbstractSocket *self = NULL;
 
-    if ((self = PyObject_GC_NEW(Abstract, type))) {
+    if ((self = PyObject_GC_NEW(AbstractSocket, type))) {
         self->name = NULL;
         self->fd = -1;
         self->size = -1;
@@ -82,7 +82,7 @@ __socket_alloc(PyTypeObject *type, int server)
 
 
 static inline int
-__socket_init(Abstract *self, PyObject *args, PyObject *kwargs)
+__socket_init(AbstractSocket *self, PyObject *args, PyObject *kwargs)
 {
     PyObject *name = NULL;
     const char *_name_ = NULL;
@@ -132,7 +132,7 @@ __socket_init(Abstract *self, PyObject *args, PyObject *kwargs)
 static inline PyObject *
 __socket_new(PyTypeObject *type, PyObject *args, PyObject *kwargs, int server)
 {
-    Abstract *self = NULL;
+    AbstractSocket *self = NULL;
 
     if (
         (self = __socket_alloc(type, server)) &&
@@ -145,7 +145,7 @@ __socket_new(PyTypeObject *type, PyObject *args, PyObject *kwargs, int server)
 
 
 static inline int
-__socket_close(Abstract *self)
+__socket_close(AbstractSocket *self)
 {
     int res = 0;
 
@@ -159,42 +159,42 @@ __socket_close(Abstract *self)
 }
 
 
-/* Abstract_Type ------------------------------------------------------------ */
+/* AbstractSocket_Type ------------------------------------------------------ */
 
-/* Abstract_Type.tp_traverse */
+/* AbstractSocket_Type.tp_traverse */
 static int
-Abstract_tp_traverse(Abstract *self, visitproc visit, void *arg)
+AbstractSocket_tp_traverse(AbstractSocket *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->name);
     return 0;
 }
 
 
-/* Abstract_Type.tp_clear */
+/* AbstractSocket_Type.tp_clear */
 static int
-Abstract_tp_clear(Abstract *self)
+AbstractSocket_tp_clear(AbstractSocket *self)
 {
     Py_CLEAR(self->name);
     return 0;
 }
 
 
-/* Abstract_Type.tp_dealloc */
+/* AbstractSocket_Type.tp_dealloc */
 static void
-Abstract_tp_dealloc(Abstract *self)
+AbstractSocket_tp_dealloc(AbstractSocket *self)
 {
     if (PyObject_CallFinalizerFromDealloc((PyObject *)self)) {
         return;
     }
     PyObject_GC_UnTrack(self);
-    Abstract_tp_clear(self);
+    AbstractSocket_tp_clear(self);
     PyObject_GC_Del(self);
 }
 
 
-/* Abstract_Type.tp_repr */
+/* AbstractSocket_Type.tp_repr */
 static PyObject *
-Abstract_tp_repr(Abstract *self)
+AbstractSocket_tp_repr(AbstractSocket *self)
 {
     return PyUnicode_FromFormat(
         "<%s(name='%U', fd=%d)>", Py_TYPE(self)->tp_name, self->name, self->fd
@@ -202,63 +202,63 @@ Abstract_tp_repr(Abstract *self)
 }
 
 
-/* Abstract.close() */
-PyDoc_STRVAR(Abstract_close_doc,
+/* AbstractSocket.close() */
+PyDoc_STRVAR(AbstractSocket_close_doc,
 "close()");
 
 static PyObject *
-Abstract_close(Abstract *self)
+AbstractSocket_close(AbstractSocket *self)
 {
     return (__socket_close(self)) ? NULL : __Py_INCREF(Py_None);
 }
 
 
-/* Abstract.fileno() */
-PyDoc_STRVAR(Abstract_fileno_doc,
+/* AbstractSocket.fileno() */
+PyDoc_STRVAR(AbstractSocket_fileno_doc,
 "fileno() -> int");
 
 static PyObject *
-Abstract_fileno(Abstract *self)
+AbstractSocket_fileno(AbstractSocket *self)
 {
     return PyLong_FromLong(self->fd);
 }
 
 
-/* Abstract_Type.tp_methods */
-static PyMethodDef Abstract_tp_methods[] = {
+/* AbstractSocket_Type.tp_methods */
+static PyMethodDef AbstractSocket_tp_methods[] = {
     {
-        "close", (PyCFunction)Abstract_close,
-        METH_NOARGS, Abstract_close_doc
+        "close", (PyCFunction)AbstractSocket_close,
+        METH_NOARGS, AbstractSocket_close_doc
     },
     {
-        "fileno", (PyCFunction)Abstract_fileno,
-        METH_NOARGS, Abstract_fileno_doc
+        "fileno", (PyCFunction)AbstractSocket_fileno,
+        METH_NOARGS, AbstractSocket_fileno_doc
     },
     {NULL}  /* Sentinel */
 };
 
 
-/* Abstract.closed */
+/* AbstractSocket.closed */
 static PyObject *
-Abstract_closed_get(Abstract *self, void *closure)
+AbstractSocket_closed_get(AbstractSocket *self, void *closure)
 {
     return PyBool_FromLong((self->fd == -1));
 }
 
 
-/* Abstract_Type.tp_getset */
-static PyGetSetDef Abstract_tp_getset[] = {
+/* AbstractSocket_Type.tp_getset */
+static PyGetSetDef AbstractSocket_tp_getset[] = {
     {
-        "closed", (getter)Abstract_closed_get,
+        "closed", (getter)AbstractSocket_closed_get,
         _Py_READONLY_ATTRIBUTE, NULL, NULL
     },
     {NULL}  /* Sentinel */
 };
 
 
-/* Abstract_Type.tp_finalize */
+/* AbstractSocket_Type.tp_finalize */
 static void
-Abstract_tp_finalize(Abstract *self)
+AbstractSocket_tp_finalize(AbstractSocket *self)
 {
     PyObject *exc_type, *exc_value, *exc_traceback;
 
@@ -270,18 +270,18 @@ Abstract_tp_finalize(Abstract *self)
 }
 
 
-static PyTypeObject Abstract_Type = {
+static PyTypeObject AbstractSocket_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "mood.ippc.sockets.Abstract",
-    .tp_basicsize = sizeof(Abstract),
-    .tp_dealloc = (destructor)Abstract_tp_dealloc,
-    .tp_repr = (reprfunc)Abstract_tp_repr,
+    .tp_name = "mood.ippc.sockets.AbstractSocket",
+    .tp_basicsize = sizeof(AbstractSocket),
+    .tp_dealloc = (destructor)AbstractSocket_tp_dealloc,
+    .tp_repr = (reprfunc)AbstractSocket_tp_repr,
     .tp_flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_HAVE_FINALIZE),
-    .tp_traverse = (traverseproc)Abstract_tp_traverse,
-    .tp_clear = (inquiry)Abstract_tp_clear,
-    .tp_methods = Abstract_tp_methods,
-    .tp_getset = Abstract_tp_getset,
-    .tp_finalize = (destructor)Abstract_tp_finalize,
+    .tp_traverse = (traverseproc)AbstractSocket_tp_traverse,
+    .tp_clear = (inquiry)AbstractSocket_tp_clear,
+    .tp_methods = AbstractSocket_tp_methods,
+    .tp_getset = AbstractSocket_tp_getset,
+    .tp_finalize = (destructor)AbstractSocket_tp_finalize,
 };
 
 
@@ -334,7 +334,7 @@ PyDoc_STRVAR(Socket_write_doc,
 "write(buf)");
 
 static PyObject *
-Socket_write(Abstract *self, PyObject *args)
+Socket_write(AbstractSocket *self, PyObject *args)
 {
     PyByteArrayObject *buf = NULL;
     Py_ssize_t len = 0, size = -1;
@@ -361,7 +361,7 @@ PyDoc_STRVAR(Socket_read_doc,
 "read(buf) -> bool");
 
 static PyObject *
-Socket_read(Abstract *self, PyObject *args)
+Socket_read(AbstractSocket *self, PyObject *args)
 {
     PyByteArrayObject *buf = NULL;
     Py_ssize_t len = 0, size = -1;
@@ -408,7 +408,7 @@ static PyMethodDef Socket_tp_methods[] = {
 static PyTypeObject Socket_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "mood.ippc.sockets.Socket",
-    .tp_basicsize = sizeof(Abstract),
+    .tp_basicsize = sizeof(AbstractSocket),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_methods = Socket_tp_methods,
 };
@@ -423,9 +423,9 @@ PyDoc_STRVAR(Server_accept_doc,
 "accept() -> Socket");
 
 static PyObject *
-Server_accept(Abstract *self)
+Server_accept(AbstractSocket *self)
 {
-    Abstract *result = NULL;
+    AbstractSocket *result = NULL;
 
     if ((result = __socket_alloc(&Socket_Type, 0))) {
         if (
@@ -462,7 +462,7 @@ Server_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 static PyTypeObject Server_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "mood.ippc.sockets.ServerSocket",
-    .tp_basicsize = sizeof(Abstract),
+    .tp_basicsize = sizeof(AbstractSocket),
     .tp_flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE),
     .tp_methods = Server_tp_methods,
     .tp_new = Server_tp_new,
@@ -484,7 +484,7 @@ Client_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 static PyTypeObject Client_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "mood.ippc.sockets.ClientSocket",
-    .tp_basicsize = sizeof(Abstract),
+    .tp_basicsize = sizeof(AbstractSocket),
     .tp_flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE),
     .tp_new = Client_tp_new,
 };
@@ -508,10 +508,10 @@ _module_init(PyObject *module)
 {
     if (
         PyModule_AddStringConstant(module, "__version__", PKG_VERSION) ||
-        PyType_Ready(&Abstract_Type) ||
-        _PyType_ReadyWithBase(&Socket_Type, &Abstract_Type) ||
+        PyType_Ready(&AbstractSocket_Type) ||
+        _PyType_ReadyWithBase(&Socket_Type, &AbstractSocket_Type) ||
         _PyModule_AddTypeWithBase(
-            module, "ServerSocket", &Server_Type, &Abstract_Type
+            module, "ServerSocket", &Server_Type, &AbstractSocket_Type
         ) ||
         _PyModule_AddTypeWithBase(
             module, "ClientSocket", &Client_Type, &Socket_Type
@@ -537,4 +537,3 @@ PyInit_sockets(void)
     }
     return module;
 }
-

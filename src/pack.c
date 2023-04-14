@@ -1,6 +1,6 @@
 /*
 #
-# Copyright © 2021 Malek Hadj-Ali
+# Copyright © 2022 Malek Hadj-Ali
 # All rights reserved.
 #
 # This file is part of mood.
@@ -1719,4 +1719,3 @@ PyInit_pack(void)
     }
     return module;
 }
-

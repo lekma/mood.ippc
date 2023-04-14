@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Copyright © 2021 Malek Hadj-Ali
+# Copyright © 2022 Malek Hadj-Ali
 # All rights reserved.
 #
 # This file is part of mood.
@@ -20,10 +20,10 @@
 #
 
 
-from logging import ERROR, DEBUG
+from logging import getLogger, ERROR, DEBUG
 from collections import deque
 
-from mood.event import Loop, EVFLAG_NOSIGMASK, EV_READ, EV_WRITE, EVBREAK_ALL
+from mood.event import EV_READ, EV_WRITE
 
 
 # ------------------------------------------------------------------------------
@@ -31,31 +31,31 @@ from mood.event import Loop, EVFLAG_NOSIGMASK, EV_READ, EV_WRITE, EVBREAK_ALL
 
 class Connection(object):
 
-    def __setup__(self, socket, loop, logger, on_close=None):
-        self._socket = socket
-        self._logger = logger
-        self._on_close = on_close
-        self._closing = False
+    def __setup__(self, socket, loop, **kwargs):
+        self._socket_ = socket
+        self.logger = kwargs.pop("logger", getLogger(__name__))
+        self._on_close_ = kwargs.pop("on_close", None)
+        self._closing_ = False
         # writer
-        self._wtasks = deque()
-        self._writer = loop.io(socket, EV_WRITE, self.__on_write__)
+        self._wtasks_ = deque()
+        self._writer_ = loop.io(socket, EV_WRITE, self.__on_write__)
         # reader
-        self._rbuf = bytearray()
-        self._rtasks = deque()
-        self._reader = loop.io(socket, EV_READ, self.__on_read__)
-        self._reader.start()
+        self._rbuf_ = bytearray()
+        self._rtasks_ = deque()
+        self._reader_ = loop.io(socket, EV_READ, self.__on_read__)
+        self._reader_.start()
 
     def __init__(self, *args, **kwargs):
         self.__setup__(*args, **kwargs)
-        self._logger.debug(f"{self}: ready")
+        self.logger.debug(f"{self}: ready")
 
     def __del__(self):
         self.close()
 
     def __on_error__(self, message, level=ERROR, exc_info=True):
         try:
-            suffix = " -> closing" if not self._closing else ""
-            self._logger.log(
+            suffix = " -> closing" if not self._closing_ else ""
+            self.logger.log(
                 level, f"{self}: {message}{suffix}", exc_info=exc_info
             )
         finally:
@@ -72,84 +72,84 @@ class Connection(object):
 
     @property
     def closed(self):
-        return self._socket.closed
+        return self._socket_.closed
 
     def __stop__(self):
-        self._reader.stop()
-        self._rtasks.clear()
-        self._rbuf.clear()
-        self._writer.stop()
-        self._wtasks.clear()
-        self._socket.close()
+        self._reader_.stop()
+        self._rtasks_.clear()
+        self._rbuf_.clear()
+        self._writer_.stop()
+        self._wtasks_.clear()
+        self._socket_.close()
 
     def __cleanup__(self):
-        self._reader = self._writer = None # break cycles
+        self._reader_ = self._writer_ = None # break cycles
 
     def close(self, notify=True):
-        if not self.closed and not self._closing:
-            self._closing = True
-            self._logger.debug(f"{self}: closing...")
+        if not self.closed and not self._closing_:
+            self._closing_ = True
+            self.logger.debug(f"{self}: closing...")
             try:
                 self.__stop__()
             finally:
                 self.__cleanup__()
-                if self._on_close:
-                    cb, self._on_close = self._on_close, None
+                if self._on_close_:
+                    cb, self._on_close_ = self._on_close_, None
                     if notify:
                         self.__run__(cb, self)
-                self._logger.debug(f"{self}: closed")
-                self._closing = False
+                self.logger.debug(f"{self}: closed")
+                self._closing_ = False
 
 
     # read ---------------------------------------------------------------------
 
     def __consume__(self, size, cb, args):
-        if len(self._rbuf) >= size:
-            buf, self._rbuf = self._rbuf[:size], self._rbuf[size:]
+        if len(self._rbuf_) >= size:
+            buf, self._rbuf_ = self._rbuf_[:size], self._rbuf_[size:]
             self.__run__(cb, buf, *args)
             return True
         return False
 
     def __on_read__(self, *args): # watcher callback
         try:
-            closed = self._socket.read(self._rbuf)
+            closed = self._socket_.read(self._rbuf_)
         except BlockingIOError:
            pass
         except Exception:
             self.__on_error__("error while reading data")
         else:
-            while self._rtasks:
-                task = self._rtasks.popleft()
+            while self._rtasks_:
+                task = self._rtasks_.popleft()
                 if not self.__consume__(*task):
-                    self._rtasks.appendleft(task)
+                    self._rtasks_.appendleft(task)
                     break
             if closed:
                 # remote end closed the connection
                 self.__on_error__("closed by peer", level=DEBUG, exc_info=False)
 
     def read(self, size, cb, *args):
-        if size and (self._rtasks or not self.__consume__(size, cb, args)):
+        if size and (self._rtasks_ or not self.__consume__(size, cb, args)):
             if self.closed:
                 raise ConnectionError(f"{self}: already closed.")
-            self._rtasks.append((size, cb, args))
+            self._rtasks_.append((size, cb, args))
 
 
     # write --------------------------------------------------------------------
 
     def __on_write__(self, *args): # watcher callback
-        buf, cb, args = task = self._wtasks.popleft()
+        buf, cb, args = task = self._wtasks_.popleft()
         try:
-            self._socket.write(buf)
+            self._socket_.write(buf)
         except BlockingIOError:
-            self._wtasks.appendleft(task)
+            self._wtasks_.appendleft(task)
         except Exception:
             self.__on_error__("error while writing data")
         else:
             if buf:
-                self._wtasks.appendleft(task)
+                self._wtasks_.appendleft(task)
             else:
-                if not self._wtasks:
-                    self._writer.stop()
+                if not self._wtasks_:
+                    self._writer_.stop()
                 if cb:
                     self.__run__(cb, *args)
 
@@ -157,37 +157,6 @@ class Connection(object):
         if buf:
             if self.closed:
                 raise ConnectionError(f"{self}: already closed.")
-            self._wtasks.append((buf, cb, args))
-            if not self._writer.active:
-                self._writer.start()
-
-
-# ------------------------------------------------------------------------------
-# Overwatch
-
-class Overwatch(Connection):
-
-    def __setup__(self, socket, loop, logger, on_close=None):
-        self._loop = Loop(flags=EVFLAG_NOSIGMASK)
-        super().__setup__(socket, self._loop, logger, on_close=on_close)
-        # overwatch
-        self._overwatch = loop.io(socket, EV_READ, self.__on_read__)
-        self._overwatch.start()
-
-    def __stop__(self):
-        self._loop.stop(EVBREAK_ALL)
-        self._overwatch.stop()
-        super().__stop__()
-
-    def __cleanup__(self):
-        self._overwatch = None # break cycles
-        super().__cleanup__()
-
-    def __block__(self):
-        self._overwatch.stop()
-        self._loop.start()
-
-    def __unblock__(self):
-        self._loop.stop(EVBREAK_ALL)
-        self._overwatch.start()
-
+            self._wtasks_.append((buf, cb, args))
+            if not self._writer_.active:
+                self._writer_.start()

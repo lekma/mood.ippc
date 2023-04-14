@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Copyright © 2021 Malek Hadj-Ali
+# Copyright © 2022 Malek Hadj-Ali
 # All rights reserved.
 #
 # This file is part of mood.
@@ -21,4 +21,3 @@
 
 
 __import__("pkg_resources").declare_namespace(__name__)
-

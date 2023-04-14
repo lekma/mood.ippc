@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Copyright © 2021 Malek Hadj-Ali
+# Copyright © 2022 Malek Hadj-Ali
 # All rights reserved.
 #
 # This file is part of mood.
@@ -27,7 +27,7 @@ from os.path import abspath
 
 
 pkg_name = "mood.ippc"
-pkg_version = "0.6.0"
+pkg_version = "1.6.0"
 pkg_desc = "Python inter process procedure call"
 
 PKG_VERSION = ("PKG_VERSION", "\"{0}\"".format(pkg_version))
@@ -84,4 +84,3 @@ setup(
         "Programming Language :: Python :: 3.10"
     ]
 )
-
